@@ -1,246 +1,11 @@
 use std::collections::vec_deque::VecDeque;
-use std::collections::HashMap;
-use std::fmt::Debug;
+
+use lisp_rs::env::Env;
+use lisp_rs::token;
+use lisp_rs::value;
+use lisp_rs::value::{LispList, LispValue};
+use std::env;
 use std::io::stdin;
-use std::{env, fmt};
-
-#[derive(Debug)]
-enum Token {
-    OParen,
-    CParen,
-    Symbol(String),
-    Float(f64),
-    Int(i64),
-    True,
-    False,
-}
-
-type LispList = VecDeque<LispValue>;
-
-#[derive(Clone)]
-enum LispValue {
-    Symbol(String),
-    True,
-    False,
-    Int(i64),
-    Float(f64),
-    Lambda(fn(&LispList) -> LispValue),
-    List(LispList),
-}
-
-impl Debug for LispValue {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            LispValue::Symbol(s) => write!(f, "{:?}", s),
-            LispValue::True => write!(f, "true"),
-            LispValue::False => write!(f, "false"),
-            LispValue::Int(i) => write!(f, "{:?}", i),
-            LispValue::Float(n) => write!(f, "{:?}", n),
-            LispValue::Lambda(_) => write!(f, "lambda"),
-            LispValue::List(v) => write!(f, "{:?}", v),
-        }
-    }
-}
-
-impl PartialEq for LispValue {
-    fn eq(&self, other: &Self) -> bool {
-        match self {
-            LispValue::Symbol(l) => match other {
-                LispValue::Symbol(r) => l == r,
-                _ => false,
-            },
-            LispValue::True => match other {
-                LispValue::True => true,
-                _ => false,
-            },
-            LispValue::False => match other {
-                LispValue::False => true,
-                _ => false,
-            },
-            LispValue::Int(l) => match other {
-                LispValue::Int(r) => l == r,
-                _ => false,
-            },
-            LispValue::Float(l) => match other {
-                LispValue::Float(r) => l == r,
-                _ => false,
-            },
-            LispValue::Lambda(_) => false,
-            LispValue::List(l) => match other {
-                LispValue::List(r) => l == r,
-                _ => false,
-            },
-        }
-    }
-}
-
-type Variables = HashMap<String, LispValue>;
-
-struct Env<'a> {
-    variables: Variables,
-    outer: Option<&'a Env<'a>>,
-}
-
-impl<'a> Env<'a> {
-    fn global() -> Self {
-        let mut variables = Variables::new();
-
-        variables.insert(
-            "+".to_string(),
-            LispValue::Lambda(|l| match l.get(0).unwrap() {
-                LispValue::Int(first) => {
-                    let mut l: Vec<_> = l
-                        .into_iter()
-                        .map(|v| match v {
-                            LispValue::Int(i) => *i,
-                            _ => panic!("Unexpected type"),
-                        })
-                        .collect();
-                    let result = l.drain(1..).fold(*first, |acc, i| acc + i);
-                    LispValue::Int(result)
-                }
-                LispValue::Float(first) => {
-                    let mut l: Vec<_> = l
-                        .into_iter()
-                        .map(|v| match v {
-                            LispValue::Float(i) => *i,
-                            _ => panic!("Unexpected type"),
-                        })
-                        .collect();
-                    let result = l.drain(1..).fold(*first, |acc, i| acc + i);
-                    LispValue::Float(result)
-                }
-                _ => panic!("Unexpected type"),
-            }),
-        );
-
-        variables.insert(
-            "*".to_string(),
-            LispValue::Lambda(|l| match l.get(0).unwrap() {
-                LispValue::Int(first) => {
-                    let mut l: Vec<_> = l
-                        .into_iter()
-                        .map(|v| match v {
-                            LispValue::Int(i) => *i,
-                            _ => panic!("Unexpected type"),
-                        })
-                        .collect();
-                    let result = l.drain(1..).fold(*first, |acc, i| acc * i);
-                    LispValue::Int(result)
-                }
-                LispValue::Float(first) => {
-                    let mut l: Vec<_> = l
-                        .into_iter()
-                        .map(|v| match v {
-                            LispValue::Float(i) => *i,
-                            _ => panic!("Unexpected type"),
-                        })
-                        .collect();
-                    let result = l.drain(1..).fold(*first, |acc, i| acc * i);
-                    LispValue::Float(result)
-                }
-                _ => panic!("Unexpected type"),
-            }),
-        );
-
-        variables.insert(
-            "-".to_string(),
-            LispValue::Lambda(|l| match l.get(0).unwrap() {
-                LispValue::Int(first) => {
-                    let mut l: Vec<_> = l
-                        .into_iter()
-                        .map(|v| match v {
-                            LispValue::Int(i) => *i,
-                            _ => panic!("Unexpected type"),
-                        })
-                        .collect();
-                    let result = l.drain(1..).fold(*first, |acc, i| acc - i);
-                    LispValue::Int(result)
-                }
-                LispValue::Float(first) => {
-                    let mut l: Vec<_> = l
-                        .into_iter()
-                        .map(|v| match v {
-                            LispValue::Float(i) => *i,
-                            _ => panic!("Unexpected type"),
-                        })
-                        .collect();
-                    let result = l.drain(1..).fold(*first, |acc, i| acc - i);
-                    LispValue::Float(result)
-                }
-                _ => panic!("Unexpected type"),
-            }),
-        );
-
-        variables.insert(
-            "/".to_string(),
-            LispValue::Lambda(|l| match l.get(0).unwrap() {
-                LispValue::Int(first) => {
-                    let mut l: Vec<_> = l
-                        .into_iter()
-                        .map(|v| match v {
-                            LispValue::Int(i) => *i,
-                            _ => panic!("Unexpected type"),
-                        })
-                        .collect();
-                    let result = l.drain(1..).fold(*first, |acc, i| acc / i);
-                    LispValue::Int(result)
-                }
-                LispValue::Float(first) => {
-                    let mut l: Vec<_> = l
-                        .into_iter()
-                        .map(|v| match v {
-                            LispValue::Float(i) => *i,
-                            _ => panic!("Unexpected type"),
-                        })
-                        .collect();
-                    let result = l.drain(1..).fold(*first, |acc, i| acc / i);
-                    LispValue::Float(result)
-                }
-                _ => panic!("Unexpected type"),
-            }),
-        );
-
-        variables.insert(
-            "car".to_string(),
-            LispValue::Lambda(|l| match l.get(0).unwrap() {
-                LispValue::List(l) => l.get(0).unwrap().clone(),
-                _ => panic!("{:?} is not a list", l),
-            }),
-        );
-
-        variables.insert(
-            "cdr".to_string(),
-            LispValue::Lambda(|l| match l.get(0).unwrap() {
-                LispValue::List(l) => LispValue::List(l.clone().drain(1..).collect()),
-                _ => panic!("{:?} is not a list", l),
-            }),
-        );
-
-        Env {
-            variables,
-            outer: None,
-        }
-    }
-
-    fn get(&self, key: &str) -> Option<&LispValue> {
-        if let Some(v) = self.variables.get(key) {
-            Some(v)
-        } else if let Some(env) = self.outer {
-            env.get(key)
-        } else {
-            None
-        }
-    }
-}
-
-fn resolve(ident: String, env: &Env) -> LispValue {
-    if let Some(v) = env.get(&ident) {
-        v.clone()
-    } else {
-        LispValue::Symbol(ident)
-    }
-}
 
 fn call_function(func: String, args: &LispList, env: &Env) -> LispValue {
     if let Some(f) = env.get(&func) {
@@ -268,51 +33,9 @@ fn eval_list(list: &mut LispList, env: &Env) -> LispValue {
 
 fn eval(value: &mut LispValue, env: &Env) -> LispValue {
     match value {
-        LispValue::Symbol(sym) => resolve(sym.to_string(), &env),
+        LispValue::Symbol(sym) => env.resolve(sym.to_string()),
         LispValue::List(list) => eval_list(list, &env),
         v => v.clone(),
-    }
-}
-
-fn tokenize(s: &str) -> VecDeque<Token> {
-    s.replace('(', " ( ")
-        .replace(')', " ) ")
-        .split_whitespace()
-        .map(|s| match s {
-            "(" => Token::OParen,
-            ")" => Token::CParen,
-            sym => {
-                if let Ok(i) = sym.parse() {
-                    Token::Int(i)
-                } else if let Ok(f) = sym.parse() {
-                    Token::Float(f)
-                } else {
-                    Token::Symbol(sym.to_string())
-                }
-            }
-        })
-        .collect()
-}
-
-fn parse(mut tokens: &mut VecDeque<Token>) -> LispValue {
-    let token = tokens.pop_front().unwrap();
-    match token {
-        Token::OParen => {
-            let mut l = VecDeque::new();
-            while let Some(t) = tokens.front() {
-                match t {
-                    Token::CParen => break,
-                    _ => l.push_back(parse(&mut tokens)),
-                }
-            }
-            LispValue::List(l)
-        }
-        Token::CParen => panic!("Unexpected )"),
-        Token::Symbol(s) => LispValue::Symbol(s),
-        Token::Int(i) => LispValue::Int(i),
-        Token::Float(f) => LispValue::Float(f),
-        Token::False => LispValue::False,
-        Token::True => LispValue::True,
     }
 }
 
@@ -320,8 +43,8 @@ fn main() {
     let env = Env::global();
 
     if let Some(ref program) = env::args().nth(1) {
-        let mut tokens = tokenize(program);
-        let mut list = parse(&mut tokens);
+        let mut tokens = token::tokenize(program);
+        let mut list = value::parse(&mut tokens);
         let list = eval(&mut list, &env);
         println!("{:?}", list);
     } else {
@@ -333,21 +56,22 @@ fn main() {
                 break;
             }
 
-            let mut tokens = tokenize(&program);
-            let mut list = parse(&mut tokens);
+            let mut tokens = token::tokenize(&program);
+            let mut list = value::parse(&mut tokens);
             let list = eval(&mut list, &env);
             println!("{:?}", list);
         }
     }
 }
 
-mod test {
+#[cfg(test)]
+mod tests {
     use super::*;
 
     fn eval_test(s: &str) -> LispValue {
         let env = Env::global();
-        let mut tokens = tokenize(s);
-        let mut list = parse(&mut tokens);
+        let mut tokens = token::tokenize(s);
+        let mut list = value::parse(&mut tokens);
         eval(&mut list, &env)
     }
 
