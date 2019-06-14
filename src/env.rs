@@ -1,5 +1,5 @@
-use super::value::LispValue;
-use std::collections::HashMap;
+use super::value::{LispList, LispValue};
+use std::collections::{HashMap, VecDeque};
 type Variables = HashMap<String, LispValue>;
 
 pub struct Env<'a> {
@@ -164,6 +164,26 @@ impl<'a> Env<'a> {
             v.clone()
         } else {
             LispValue::Symbol(ident)
+        }
+    }
+
+    pub fn eval(&self, value: &mut LispValue) -> LispValue {
+        match value {
+            LispValue::Symbol(sym) => self.resolve(sym.to_string()),
+            LispValue::List(list) => self.eval_list(list),
+            v => v.clone(),
+        }
+    }
+
+    fn eval_list(&self, list: &mut LispList) -> LispValue {
+        let mut evaluated: VecDeque<_> = list.into_iter().map(|e| self.eval(e)).collect();
+        match evaluated.pop_front() {
+            Some(LispValue::Lambda(f)) => f(&evaluated),
+            Some(e) => {
+                evaluated.push_front(e);
+                LispValue::List(evaluated)
+            }
+            _ => panic!("Unexpected"),
         }
     }
 }
