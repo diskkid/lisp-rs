@@ -18,13 +18,13 @@ pub fn tokenize(s: &str) -> VecDeque<Token> {
         .map(|s| match s {
             "(" => Token::OParen,
             ")" => Token::CParen,
-            sym => {
-                if let Ok(i) = sym.parse() {
+            _ => {
+                if let Ok(i) = s.parse() {
                     Token::Int(i)
-                } else if let Ok(f) = sym.parse() {
+                } else if let Ok(f) = s.parse() {
                     Token::Float(f)
                 } else {
-                    Token::Symbol(sym.to_string())
+                    Token::Symbol(s.to_string())
                 }
             }
         })
