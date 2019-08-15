@@ -2,6 +2,7 @@ use std::collections::vec_deque::VecDeque;
 use std::fmt;
 use std::fmt::Debug;
 
+use super::env::Env;
 use super::token::Token;
 
 pub type LispList = VecDeque<LispValue>;
@@ -13,7 +14,7 @@ pub enum LispValue {
     False,
     Int(i64),
     Float(f64),
-    Lambda(fn(&LispList) -> LispValue),
+    Lambda(fn(&Env, &LispList) -> LispValue),
     List(LispList),
 }
 

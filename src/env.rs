@@ -7,7 +7,7 @@ pub struct Env<'a> {
     outer: Option<&'a Env<'a>>,
 }
 
-fn add(args: &LispList) -> LispValue {
+fn add(_: &Env, args: &LispList) -> LispValue {
     match args.get(0).unwrap() {
         LispValue::Int(first) => {
             let mut l: Vec<_> = args
@@ -35,7 +35,7 @@ fn add(args: &LispList) -> LispValue {
     }
 }
 
-fn multiply(args: &LispList) -> LispValue {
+fn multiply(_: &Env, args: &LispList) -> LispValue {
     match args.get(0).unwrap() {
         LispValue::Int(first) => {
             let mut l: Vec<_> = args
@@ -63,7 +63,7 @@ fn multiply(args: &LispList) -> LispValue {
     }
 }
 
-fn substract(args: &LispList) -> LispValue {
+fn substract(_: &Env, args: &LispList) -> LispValue {
     match args.get(0).unwrap() {
         LispValue::Int(first) => {
             let mut l: Vec<_> = args
@@ -91,7 +91,7 @@ fn substract(args: &LispList) -> LispValue {
     }
 }
 
-fn divide(args: &LispList) -> LispValue {
+fn divide(_: &Env, args: &LispList) -> LispValue {
     match args.get(0).unwrap() {
         LispValue::Int(first) => {
             let mut l: Vec<_> = args
@@ -119,14 +119,14 @@ fn divide(args: &LispList) -> LispValue {
     }
 }
 
-fn car(args: &LispList) -> LispValue {
+fn car(_: &Env, args: &LispList) -> LispValue {
     match args.get(0).unwrap() {
         LispValue::List(l) => l.get(0).unwrap().clone(),
         _ => panic!("{:?} is not a list", args),
     }
 }
 
-fn cdr(args: &LispList) -> LispValue {
+fn cdr(_: &Env, args: &LispList) -> LispValue {
     match args.get(0).unwrap() {
         LispValue::List(l) => LispValue::List(l.clone().drain(1..).collect()),
         _ => panic!("{:?} is not a list", args),
@@ -180,7 +180,7 @@ impl<'a> Env<'a> {
     fn eval_list(&self, list: &mut LispList) -> LispValue {
         let mut evaluated: VecDeque<_> = list.into_iter().map(|e| self.eval(e)).collect();
         match evaluated.pop_front() {
-            Some(LispValue::Lambda(f)) => f(&evaluated),
+            Some(LispValue::Lambda(f)) => f(&self, &evaluated),
             Some(e) => {
                 evaluated.push_front(e);
                 LispValue::List(evaluated)
